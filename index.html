@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Threat Detection Simulator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>AI Threat Detection Simulator</h1>
+      <p class="subtitle">Demo-only workflow for violent speech analysis + face matching in uploaded video.</p>
+    </header>
+
+    <section class="card">
+      <h2>1) Upload Video Evidence</h2>
+      <label class="file-label" for="videoInput">Choose video file</label>
+      <input id="videoInput" type="file" accept="video/*" />
+      <video id="videoPreview" controls muted playsinline></video>
+      <p id="videoStatus" class="muted">No video selected.</p>
+    </section>
+
+    <section class="card grid">
+      <div>
+        <h2>2) Simulate Violent Speech Detection</h2>
+        <p class="muted">Paste transcript text from the uploaded video to simulate speech-to-text output.</p>
+        <textarea id="transcriptInput" rows="7" placeholder="Example: We should attack tonight..."></textarea>
+        <button id="analyzeSpeechBtn">Analyze Speech</button>
+        <p id="speechResult" class="result neutral">Waiting for analysis.</p>
+      </div>
+      <div>
+        <h2>3) Simulate Face Detection + Matching</h2>
+        <p class="muted">Demo wanted-person image database (fixed sample portraits).</p>
+        <ul id="wantedDb" class="wanted-list"></ul>
+        <button id="analyzeFaceBtn">Detect & Compare Face</button>
+        <p id="faceResult" class="result neutral">No face analysis yet.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>4) Threat Decision</h2>
+      <div id="decisionBox" class="decision neutral">
+        Upload and analyze to get a decision.
+      </div>
+      <div id="metrics" class="metrics"></div>
+    </section>
+
+    <section class="card ethics">
+      <h2>Ethics & Privacy Notes</h2>
+      <ul>
+        <li><strong>Simulation only:</strong> This app demonstrates logic flow; it is not forensic-grade detection.</li>
+        <li><strong>Bias risk:</strong> Face recognition can perform unevenly across demographics and may generate false matches.</li>
+        <li><strong>Human oversight:</strong> Any alert should trigger manual review and due process, never automatic punishment.</li>
+        <li><strong>Data minimization:</strong> Collect only the minimum video data needed and delete it quickly after review.</li>
+        <li><strong>Consent & legality:</strong> Use must comply with consent, surveillance, and civil-rights laws in your region.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
