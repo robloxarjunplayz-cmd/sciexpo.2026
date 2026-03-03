@@ -3,10 +3,61 @@ const violentKeywords = [
 ];
 
 const wantedPersons = [
-  { name: "Alex Mercer", signature: [0.82, 0.46, 0.66] },
-  { name: "Dani Voss", signature: [0.25, 0.74, 0.33] },
-  { name: "R. Kade", signature: [0.58, 0.59, 0.18] }
-];
+  "Daniel Carter",
+  "Michael Reeves",
+  "Jonathan Blake",
+  "Aaron Mitchell",
+  "Ryan Foster",
+  "Kevin Turner",
+  "Marcus Hill",
+  "Ethan Brooks",
+  "Samuel Reed",
+  "Victor Hayes",
+  "Nathan Cole",
+  "Brandon Lewis",
+  "Tyler Morgan",
+  "Jason Walker",
+  "Lucas Bennett",
+  "Harry Potter",
+  "Hermione Granger",
+  "Ron Weasley",
+  "Albus Dumbledore",
+  "Severus Snape",
+  "Draco Malfoy",
+  "Sirius Black",
+  "Minerva McGonagall",
+  "Rubeus Hagrid",
+  "Luna Lovegood",
+  "Neville Longbottom",
+  "Ginny Weasley",
+  "Fred Weasley",
+  "George Weasley",
+  "Bellatrix Lestrange",
+  "Percy Jackson",
+  "Annabeth Chase",
+  "Grover Underwood",
+  "Luke Castellan",
+  "Clarisse La Rue"
+].map((name) => ({
+  name,
+  signature: buildNameSignature(name)
+}));
+
+function buildNameSignature(name) {
+  let h1 = 2166136261;
+  let h2 = 16777619;
+  for (const ch of name) {
+    const code = ch.charCodeAt(0);
+    h1 ^= code;
+    h1 = Math.imul(h1, 16777619);
+    h2 ^= code + 31;
+    h2 = Math.imul(h2, 1099511627 >>> 0);
+  }
+  const n1 = ((h1 >>> 0) % 1000) / 1000;
+  const n2 = ((h2 >>> 0) % 1000) / 1000;
+  const n3 = (((h1 ^ h2) >>> 0) % 1000) / 1000;
+  return [n1, n2, n3];
+}
 
 const state = {
   hasVideo: false,
