@@ -1,222 +1,235 @@
-const violentKeywords = [
-  "kill", "attack", "shoot", "bomb", "explode", "stab", "murder", "burn", "threat", "assault"
+// This list has words we treat as toxic/harmful in this demo.
+const harmfulWords = [
+  "hate", "idiot", "loser", "ugly", "kill", "dumb", "stupid", "worthless", "trash", "attack"
 ];
 
+// We keep a small wanted-person list with demo signatures for face matching simulation.
 const wantedPersons = [
-  "Daniel Carter",
-  "Michael Reeves",
-  "Jonathan Blake",
-  "Aaron Mitchell",
-  "Ryan Foster",
-  "Kevin Turner",
-  "Marcus Hill",
-  "Ethan Brooks",
-  "Samuel Reed",
-  "Victor Hayes",
-  "Nathan Cole",
-  "Brandon Lewis",
-  "Tyler Morgan",
-  "Jason Walker",
-  "Lucas Bennett",
-  "Harry Potter",
-  "Hermione Granger",
-  "Ron Weasley",
-  "Albus Dumbledore",
-  "Severus Snape",
-  "Draco Malfoy",
-  "Sirius Black",
-  "Minerva McGonagall",
-  "Rubeus Hagrid",
-  "Luna Lovegood",
-  "Neville Longbottom",
-  "Ginny Weasley",
-  "Fred Weasley",
-  "George Weasley",
-  "Bellatrix Lestrange",
-  "Percy Jackson",
-  "Annabeth Chase",
-  "Grover Underwood",
-  "Luke Castellan",
-  "Clarisse La Rue"
-].map((name) => ({
-  name,
-  signature: buildNameSignature(name)
-}));
+  "Daniel Carter", "Michael Reeves", "Jonathan Blake", "Aaron Mitchell", "Ryan Foster",
+  "Kevin Turner", "Marcus Hill", "Ethan Brooks", "Samuel Reed", "Victor Hayes",
+  "Nathan Cole", "Brandon Lewis", "Tyler Morgan", "Jason Walker", "Lucas Bennett",
+  "Harry Potter", "Hermione Granger", "Ron Weasley", "Albus Dumbledore", "Severus Snape",
+  "Draco Malfoy", "Sirius Black", "Minerva McGonagall", "Rubeus Hagrid", "Luna Lovegood",
+  "Neville Longbottom", "Ginny Weasley", "Fred Weasley", "George Weasley", "Bellatrix Lestrange",
+  "Percy Jackson", "Annabeth Chase", "Grover Underwood", "Luke Castellan", "Clarisse La Rue"
+].map((name) => ({ name, signature: buildNameSignature(name) }));
 
+// This object stores results so we can combine them into one final decision.
+const state = {
+  textScore: 0,
+  videoTextScore: 0,
+  bestFaceMatch: null
+};
+
+const tabs = document.querySelectorAll(".tab-btn");
+const tabSections = document.querySelectorAll(".tab-content");
+const themeToggle = document.getElementById("themeToggle");
+
+const textInput = document.getElementById("textInput");
+const textResult = document.getElementById("textResult");
+const textToxicity = document.getElementById("textToxicity");
+
+const imageInput = document.getElementById("imageInput");
+const imagePreview = document.getElementById("imagePreview");
+const imageResult = document.getElementById("imageResult");
+
+const videoInput = document.getElementById("videoInput");
+const videoPreview = document.getElementById("videoPreview");
+const videoCaption = document.getElementById("videoCaption");
+const videoTextResult = document.getElementById("videoTextResult");
+const faceResult = document.getElementById("faceResult");
+const decisionResult = document.getElementById("decisionResult");
+const videoMetrics = document.getElementById("videoMetrics");
+
+// Make each name always map to the same pseudo-random signature.
 function buildNameSignature(name) {
   let h1 = 2166136261;
   let h2 = 16777619;
   for (const ch of name) {
-    const code = ch.charCodeAt(0);
-    h1 ^= code;
+    const c = ch.charCodeAt(0);
+    h1 ^= c;
     h1 = Math.imul(h1, 16777619);
-    h2 ^= code + 31;
-    h2 = Math.imul(h2, 1099511627 >>> 0);
+    h2 ^= c + 31;
+    h2 = Math.imul(h2, 2246822519);
   }
-  const n1 = ((h1 >>> 0) % 1000) / 1000;
-  const n2 = ((h2 >>> 0) % 1000) / 1000;
-  const n3 = (((h1 ^ h2) >>> 0) % 1000) / 1000;
-  return [n1, n2, n3];
+  return [((h1 >>> 0) % 1000) / 1000, ((h2 >>> 0) % 1000) / 1000, (((h1 ^ h2) >>> 0) % 1000) / 1000];
 }
 
-const state = {
-  hasVideo: false,
-  speechThreatScore: 0,
-  speechIsThreat: false,
-  bestFaceMatch: null
-};
-
-const videoInput = document.getElementById("videoInput");
-const videoPreview = document.getElementById("videoPreview");
-const videoStatus = document.getElementById("videoStatus");
-const transcriptInput = document.getElementById("transcriptInput");
-const speechResult = document.getElementById("speechResult");
-const faceResult = document.getElementById("faceResult");
-const decisionBox = document.getElementById("decisionBox");
-const metrics = document.getElementById("metrics");
-const wantedDb = document.getElementById("wantedDb");
-
-function renderWantedDb() {
-  wantedDb.innerHTML = wantedPersons
-    .map((person) => `<li>${person.name}</li>`)
-    .join("");
+// Tabs let us keep text/image/video tools separated in a dashboard style.
+for (const tab of tabs) {
+  tab.addEventListener("click", () => {
+    tabs.forEach((btn) => btn.classList.remove("active"));
+    tab.classList.add("active");
+    tabSections.forEach((section) => section.classList.remove("active"));
+    document.getElementById(tab.dataset.tab).classList.add("active");
+  });
 }
 
-function normalizeClass(el, statusClass) {
-  el.classList.remove("neutral", "safe", "alert");
-  el.classList.add(statusClass);
-}
+// Switch between dark mode (default) and light mode.
+themeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("light");
+  themeToggle.textContent = document.body.classList.contains("light") ? "☀️ Light Mode" : "🌙 Dark Mode";
+});
 
-function analyzeSpeech() {
-  const transcript = transcriptInput.value.toLowerCase();
-  const words = transcript.split(/[^a-z]+/).filter(Boolean);
-  const matches = words.filter((w) => violentKeywords.includes(w));
+// Reusable helper for classifying text safety and toxicity percentage.
+function analyzeTextContent(inputText) {
+  const words = inputText.toLowerCase().split(/[^a-z]+/).filter(Boolean);
+  const hits = words.filter((word) => harmfulWords.includes(word));
+  const score = Math.min(100, Math.round((hits.length / Math.max(words.length, 1)) * 350 + (hits.length >= 2 ? 20 : 0)));
 
-  const score = Math.min(100, Math.round((matches.length / Math.max(words.length, 1)) * 400));
-  const severeMatchBoost = matches.length >= 2 ? 25 : 0;
-  const finalScore = Math.min(100, score + severeMatchBoost);
-
-  state.speechThreatScore = finalScore;
-  state.speechIsThreat = finalScore >= 45;
-
-  if (!transcript.trim()) {
-    speechResult.textContent = "No transcript entered. Add speech text to analyze.";
-    normalizeClass(speechResult, "neutral");
-    state.speechThreatScore = 0;
-    state.speechIsThreat = false;
-  } else if (state.speechIsThreat) {
-    speechResult.textContent = `Potential violent speech detected (score ${finalScore}%). Matched keywords: ${[...new Set(matches)].join(", ") || "none"}.`;
-    normalizeClass(speechResult, "alert");
-  } else {
-    speechResult.textContent = `Low violent-speech likelihood (score ${finalScore}%).`;
-    normalizeClass(speechResult, "safe");
+  let label = "Safe";
+  let css = "safe";
+  if (score >= 60) {
+    label = "Harmful";
+    css = "harmful";
+  } else if (score >= 25) {
+    label = "Warning";
+    css = "warning";
   }
 
-  updateDecision();
+  return { words, hits, score, label, css };
 }
 
-function getVideoSignature(videoEl) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 64;
-  canvas.height = 64;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+// Show animated result card with one status class.
+function showResult(el, text, cssClass) {
+  el.classList.remove("neutral", "safe", "warning", "harmful", "show");
+  el.classList.add(cssClass);
+  el.textContent = text;
+  requestAnimationFrame(() => el.classList.add("show"));
+}
 
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  for (let i = 0; i < pixels.length; i += 4) {
-    r += pixels[i];
-    g += pixels[i + 1];
-    b += pixels[i + 2];
+// TEXT DETECTION
+// 7th-grade note: This checks words and gives a simple score.
+document.getElementById("analyzeTextBtn").addEventListener("click", () => {
+  const result = analyzeTextContent(textInput.value);
+  state.textScore = result.score;
+
+  if (!textInput.value.trim()) {
+    showResult(textResult, "Please type a message first.", "neutral");
+    textToxicity.innerHTML = "";
+    return;
   }
 
-  const total = r + g + b || 1;
-  return [r / total, g / total, b / total];
-}
-
-function similarityPercent(a, b) {
-  const distance = Math.sqrt(
-    Math.pow(a[0] - b[0], 2) +
-    Math.pow(a[1] - b[1], 2) +
-    Math.pow(a[2] - b[2], 2)
+  showResult(
+    textResult,
+    `${result.label}: ${result.hits.length} harmful word match(es). Found: ${[...new Set(result.hits)].join(", ") || "none"}.`,
+    result.css
   );
-  const maxDistance = Math.sqrt(3);
-  return Math.max(0, Math.round((1 - distance / maxDistance) * 100));
-}
+  textToxicity.innerHTML = `<span class="pill">Toxicity: ${result.score}%</span>`;
+});
 
-function analyzeFace() {
-  if (!state.hasVideo) {
-    faceResult.textContent = "Please upload a video first.";
-    normalizeClass(faceResult, "neutral");
+// IMAGE DETECTION
+// We simulate image moderation by checking the file name for risky tags.
+imageInput.addEventListener("change", () => {
+  const file = imageInput.files?.[0];
+  if (!file) return;
+
+  imagePreview.src = URL.createObjectURL(file);
+  imagePreview.style.display = "block";
+
+  const riskyTags = ["weapon", "blood", "fight", "adult", "nsfw", "abuse", "violence"];
+  const lower = file.name.toLowerCase();
+  const detected = riskyTags.filter((tag) => lower.includes(tag));
+
+  if (detected.length > 0) {
+    showResult(imageResult, `Potentially Inappropriate Image (flagged tags: ${detected.join(", ")}).`, "warning");
+  } else {
+    showResult(imageResult, "Safe Image (no risky tags detected in demo).", "safe");
+  }
+});
+
+// VIDEO FACE + CAPTION DETECTION
+// 1) analyze caption with same text logic
+// 2) simulate face detection from a video frame
+// 3) compare face signature with wanted list and combine with threat text
+
+document.getElementById("analyzeVideoBtn").addEventListener("click", () => {
+  const captionResult = analyzeTextContent(videoCaption.value);
+  state.videoTextScore = captionResult.score;
+
+  if (!videoCaption.value.trim()) {
+    showResult(videoTextResult, "No video caption/extracted text entered.", "neutral");
+  } else {
+    showResult(videoTextResult, `Caption ${captionResult.label} (${captionResult.score}% toxicity).`, captionResult.css);
+  }
+
+  if (!videoInput.files?.[0]) {
+    showResult(faceResult, "Upload a video to simulate face detection.", "neutral");
+    showResult(decisionResult, "No combined decision yet.", "neutral");
     return;
   }
 
   if (videoPreview.readyState < 2) {
-    faceResult.textContent = "Video not ready yet. Play or seek the video and try again.";
-    normalizeClass(faceResult, "neutral");
+    showResult(faceResult, "Video is loading. Play or seek and analyze again.", "neutral");
     return;
   }
 
-  const videoSig = getVideoSignature(videoPreview);
+  const videoSignature = getVideoSignature(videoPreview);
   const ranked = wantedPersons
-    .map((person) => ({
-      name: person.name,
-      similarity: similarityPercent(videoSig, person.signature)
-    }))
+    .map((person) => ({ name: person.name, similarity: similarityPercent(videoSignature, person.signature) }))
     .sort((a, b) => b.similarity - a.similarity);
 
   state.bestFaceMatch = ranked[0];
+  const strongFaceMatch = state.bestFaceMatch.similarity >= 70;
+  const violentSpeech = captionResult.score >= 60;
 
-  if (state.bestFaceMatch.similarity >= 70) {
-    faceResult.textContent = `Face detected. Best match: ${state.bestFaceMatch.name} (${state.bestFaceMatch.similarity}% similarity).`;
-    normalizeClass(faceResult, "alert");
+  showResult(
+    faceResult,
+    `Face detected. Best match: ${state.bestFaceMatch.name} (${state.bestFaceMatch.similarity}% similarity).`,
+    strongFaceMatch ? "warning" : "safe"
+  );
+
+  if (violentSpeech && strongFaceMatch) {
+    showResult(
+      decisionResult,
+      "🚨 ALERT: Harmful/violent speech + strong wanted-person face match detected. Send for immediate human review.",
+      "harmful"
+    );
+  } else if (violentSpeech || strongFaceMatch) {
+    showResult(decisionResult, "⚠️ Partial risk signal. Continue manual investigation.", "warning");
   } else {
-    faceResult.textContent = `Face detected, but no strong database match (top result: ${state.bestFaceMatch.name}, ${state.bestFaceMatch.similarity}%).`;
-    normalizeClass(faceResult, "safe");
+    showResult(decisionResult, "✅ No high-risk combined condition detected in this demo.", "safe");
   }
 
-  updateDecision();
-}
-
-function updateDecision() {
-  const isMatch = state.bestFaceMatch && state.bestFaceMatch.similarity >= 70;
-  const isThreat = state.speechIsThreat;
-
-  if (isThreat && isMatch) {
-    decisionBox.textContent = `🚨 ALERT: Violent speech indicators + wanted-person face match (${state.bestFaceMatch.name}, ${state.bestFaceMatch.similarity}%). Escalate for immediate human review.`;
-    normalizeClass(decisionBox, "alert");
-  } else if (isThreat || isMatch) {
-    decisionBox.textContent = "⚠️ Partial risk signal detected. Continue investigation with human analyst verification.";
-    normalizeClass(decisionBox, "neutral");
-  } else {
-    decisionBox.textContent = "✅ No combined high-risk condition found in this simulation.";
-    normalizeClass(decisionBox, "safe");
-  }
-
-  const pills = [];
-  pills.push(`<span class="metric-pill">Speech threat score: ${state.speechThreatScore}%</span>`);
-  pills.push(`<span class="metric-pill">Face similarity: ${state.bestFaceMatch ? `${state.bestFaceMatch.similarity}% (${state.bestFaceMatch.name})` : "N/A"}</span>`);
-  metrics.innerHTML = pills.join("");
-}
+  videoMetrics.innerHTML = [
+    `<span class="pill">Caption toxicity: ${captionResult.score}%</span>`,
+    `<span class="pill">Top face match: ${state.bestFaceMatch.similarity}%</span>`
+  ].join("");
+});
 
 videoInput.addEventListener("change", () => {
   const file = videoInput.files?.[0];
   if (!file) return;
-
-  const url = URL.createObjectURL(file);
-  videoPreview.src = url;
-  videoStatus.textContent = `Loaded: ${file.name}`;
-  state.hasVideo = true;
-  state.bestFaceMatch = null;
-  faceResult.textContent = "Video loaded. Click 'Detect & Compare Face' once the frame is visible.";
-  normalizeClass(faceResult, "neutral");
-  updateDecision();
+  videoPreview.src = URL.createObjectURL(file);
+  showResult(videoTextResult, `Loaded video: ${file.name}`, "neutral");
+  showResult(faceResult, "Ready for face comparison when frame is visible.", "neutral");
+  showResult(decisionResult, "Run analysis to generate decision.", "neutral");
 });
 
-document.getElementById("analyzeSpeechBtn").addEventListener("click", analyzeSpeech);
-document.getElementById("analyzeFaceBtn").addEventListener("click", analyzeFace);
+// Draw a tiny snapshot from the video to create a simple color signature.
+function getVideoSignature(videoElement) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-renderWantedDb();
-updateDecision();
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let r = 0, g = 0, b = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    r += data[i];
+    g += data[i + 1];
+    b += data[i + 2];
+  }
+  const total = r + g + b || 1;
+  return [r / total, g / total, b / total];
+}
+
+// Convert distance between two signatures into similarity percent.
+function similarityPercent(a, b) {
+  const dist = Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
+  return Math.max(0, Math.round((1 - dist / Math.sqrt(3)) * 100));
+}
+
+// Put wanted names in the list at startup.
+document.getElementById("wantedList").innerHTML = wantedPersons.map((p) => `<li>${p.name}</li>`).join("");
