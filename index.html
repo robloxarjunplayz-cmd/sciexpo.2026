@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Multi-Content Cyberbullying & Toxic Content Filter</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <h1>AI Multi-Content Cyberbullying & Toxic Content Filter</h1>
+        <p>Local browser demo for text, image, and video safety screening.</p>
+      </div>
+      <button id="themeToggle" class="ghost-btn" aria-label="Toggle dark mode">🌙 Dark Mode</button>
+    </header>
+
+    <section class="tabs card">
+      <button class="tab-btn active" data-tab="textTab">Text Detection</button>
+      <button class="tab-btn" data-tab="imageTab">Image Detection</button>
+      <button class="tab-btn" data-tab="videoTab">Video/Reel Detection</button>
+    </section>
+
+    <section id="textTab" class="card tab-content active">
+      <h2>Text Toxicity Detection</h2>
+      <p class="muted">Type a message and check if it may include toxic or harmful words.</p>
+      <textarea id="textInput" rows="6" placeholder="Type message here..."></textarea>
+      <button id="analyzeTextBtn">Analyze Text</button>
+      <div id="textResult" class="result neutral">Waiting for text analysis.</div>
+      <div id="textToxicity" class="pill-row"></div>
+    </section>
+
+    <section id="imageTab" class="card tab-content">
+      <h2>Image Moderation</h2>
+      <p class="muted">Upload an image. This demo simulates computer vision moderation using filename/tag hints.</p>
+      <label class="upload-btn" for="imageInput">Choose Image</label>
+      <input id="imageInput" type="file" accept="image/*" />
+      <img id="imagePreview" alt="Uploaded preview" />
+      <div id="imageResult" class="result neutral">No image analyzed yet.</div>
+    </section>
+
+    <section id="videoTab" class="card tab-content">
+      <h2>Video / Reel Detection</h2>
+      <p class="muted">Upload a short video, add description/caption text, then run analysis.</p>
+      <label class="upload-btn" for="videoInput">Choose Video</label>
+      <input id="videoInput" type="file" accept="video/*" />
+      <video id="videoPreview" controls muted playsinline></video>
+
+      <label for="videoCaption">Video caption / extracted speech text</label>
+      <textarea id="videoCaption" rows="4" placeholder="Example: He is ugly and we should attack him..."></textarea>
+      <button id="analyzeVideoBtn">Analyze Video Content</button>
+
+      <div id="videoTextResult" class="result neutral">No caption analysis yet.</div>
+      <div id="faceResult" class="result neutral">No face comparison yet.</div>
+      <div id="decisionResult" class="result neutral">No combined alert yet.</div>
+      <div id="videoMetrics" class="pill-row"></div>
+
+      <h3>Demo Wanted Persons Database</h3>
+      <ul id="wantedList"></ul>
+    </section>
+
+    <section class="card info-grid">
+      <article>
+        <h2>How NLP Helps</h2>
+        <p>
+          NLP (Natural Language Processing) lets computers read human language. In this demo, NLP checks words,
+          counts harmful terms, and gives a toxicity percentage.
+        </p>
+      </article>
+      <article>
+        <h2>How Computer Vision Helps</h2>
+        <p>
+          Computer Vision helps computers understand images and videos. Real systems can detect unsafe scenes,
+          faces, and behavior patterns from visual data.
+        </p>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Ethics & Privacy Explanation</h2>
+      <ul>
+        <li>This is an educational simulator, not a real law-enforcement product.</li>
+        <li>Real AI models are trained on millions of examples, then validated in controlled pipelines.</li>
+        <li>False positives and bias can happen; every alert requires human review.</li>
+        <li>Use consent-first policies and store only minimum data for the shortest time possible.</li>
+        <li>Follow local privacy, child safety, and digital rights regulations.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
